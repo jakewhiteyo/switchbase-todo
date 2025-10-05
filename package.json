@@ -13,6 +13,7 @@
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
+    "@tanstack/react-query": "^5.62.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.544.0",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@tanstack/react-query-devtools": "^5.62.8",
     "@types/node": "^20.19.19",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
