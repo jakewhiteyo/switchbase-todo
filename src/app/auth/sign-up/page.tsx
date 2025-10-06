@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSignup } from "@/app/hooks/useAuth";
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -22,6 +23,10 @@ export default function SignUpPage() {
     password: "",
     confirmPassword: "",
   });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+
+  const { isLoading, isError, error, signup } = useSignup();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -29,12 +34,38 @@ export default function SignUpPage() {
       ...prev,
       [name]: value,
     }));
+
+    // Clear password error when user starts typing
+    if (name === "confirmPassword" || name === "password") {
+      setPasswordError("");
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement sign-up logic
-    console.log("Sign up:", formData);
+
+    // Validate password confirmation
+    if (formData.password !== formData.confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+
+    // Validate terms agreement
+    if (!agreedToTerms) {
+      return;
+    }
+
+    try {
+      await signup({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+      });
+    } catch (error) {
+      // Error is handled by the hook and displayed via isError/error
+      console.error("Signup error:", error);
+    }
   };
 
   return (
@@ -47,6 +78,12 @@ export default function SignUpPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {isError && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+              {error?.message || "An error occurred during signup"}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -59,6 +96,7 @@ export default function SignUpPage() {
                   value={formData.firstName}
                   onChange={handleInputChange}
                   required
+                  disabled={isLoading}
                   className="h-11"
                 />
               </div>
@@ -72,6 +110,7 @@ export default function SignUpPage() {
                   value={formData.lastName}
                   onChange={handleInputChange}
                   required
+                  disabled={isLoading}
                   className="h-11"
                 />
               </div>
@@ -86,6 +125,7 @@ export default function SignUpPage() {
                 value={formData.email}
                 onChange={handleInputChange}
                 required
+                disabled={isLoading}
                 className="h-11"
               />
             </div>
@@ -99,6 +139,7 @@ export default function SignUpPage() {
                 value={formData.password}
                 onChange={handleInputChange}
                 required
+                disabled={isLoading}
                 className="h-11"
               />
             </div>
@@ -112,14 +153,22 @@ export default function SignUpPage() {
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 required
-                className="h-11"
+                disabled={isLoading}
+                className={`h-11 ${
+                  passwordError ? "border-red-300 focus:border-red-500" : ""
+                }`}
               />
+              {passwordError && (
+                <p className="text-sm text-red-600">{passwordError}</p>
+              )}
             </div>
             <div className="flex items-center space-x-2">
               <input
                 id="terms"
                 type="checkbox"
-                required
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                disabled={isLoading}
                 className="h-4 w-4 text-sw-new-green focus:ring-sw-new-green border-gray-300 rounded"
               />
               <Label htmlFor="terms" className="text-sm text-gray-600">
@@ -141,9 +190,10 @@ export default function SignUpPage() {
             </div>
             <Button
               type="submit"
-              className="w-full h-11 bg-sw-new-green hover:bg-sw-green text-white font-medium"
+              disabled={isLoading || !agreedToTerms}
+              className="w-full h-11 bg-sw-new-green hover:bg-sw-green text-white font-medium disabled:opacity-50"
             >
-              Create account
+              {isLoading ? "Creating account..." : "Create account"}
             </Button>
           </form>
         </CardContent>

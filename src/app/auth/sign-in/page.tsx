@@ -13,16 +13,26 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { useSignin } from "@/app/hooks/useAuth";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { isLoading, isError, error, signin } = useSignin();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement sign-in logic
-    console.log("Sign in:", { email, password });
+
+    try {
+      await signin({
+        email,
+        password,
+      });
+    } catch (error) {
+      // Error is handled by the hook and displayed via isError/error
+      console.error("Sign in error:", error);
+    }
   };
 
   return (
@@ -35,6 +45,18 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {isError && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+              {error?.message || "An error occurred during sign in"}
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="p-3 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-md">
+              Signing in...
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -45,6 +67,7 @@ export default function SignInPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
                 className="h-11"
               />
             </div>
@@ -57,6 +80,7 @@ export default function SignInPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
                 className="h-11"
               />
             </div>
@@ -65,6 +89,7 @@ export default function SignInPage() {
                 <input
                   id="remember"
                   type="checkbox"
+                  disabled={isLoading}
                   className="h-4 w-4 text-sw-new-green focus:ring-sw-new-green border-gray-300 rounded"
                 />
                 <Label htmlFor="remember" className="text-sm text-gray-600">
@@ -80,9 +105,10 @@ export default function SignInPage() {
             </div>
             <Button
               type="submit"
-              className="w-full h-11 bg-sw-new-green hover:bg-sw-green text-white font-medium"
+              disabled={isLoading}
+              className="w-full h-11 bg-sw-new-green hover:bg-sw-green text-white font-medium disabled:opacity-50"
             >
-              Sign in
+              {isLoading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
         </CardContent>
