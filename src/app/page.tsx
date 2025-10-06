@@ -1,6 +1,16 @@
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+
+  // Server-side redirect if user is authenticated
+  if (session) {
+    redirect("/todo");
+  }
+
   return (
     <main className="flex flex-col gap-[32px] items-center sm:items-start mt-40">
       <div className="text-center">
