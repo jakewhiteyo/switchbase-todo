@@ -7,7 +7,7 @@ import { Prisma } from "@/generated/prisma";
 // GET /api/todos/[id] - Get a single todo by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,7 +17,7 @@ export async function GET(
     }
 
     const userId = session.user.id;
-    const todoId = params.id;
+    const { id: todoId } = await params;
 
     const todo = await prisma.todo.findUnique({
       where: { id: todoId },
@@ -45,7 +45,7 @@ export async function GET(
 // PUT /api/todos/[id] - Update a todo
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -55,7 +55,7 @@ export async function PUT(
     }
 
     const userId = session.user.id;
-    const todoId = params.id;
+    const { id: todoId } = await params;
 
     // Check if todo exists and belongs to user
     const existingTodo = await prisma.todo.findUnique({
@@ -124,7 +124,7 @@ export async function PUT(
 // DELETE /api/todos/[id] - Delete a todo
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -134,7 +134,7 @@ export async function DELETE(
     }
 
     const userId = session.user.id;
-    const todoId = params.id;
+    const { id: todoId } = await params;
 
     // Check if todo exists and belongs to user
     const existingTodo = await prisma.todo.findUnique({
