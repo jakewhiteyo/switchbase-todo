@@ -32,7 +32,7 @@ export default function RootLayout({
         <Providers>
           <div className="min-h-screen bg-white">
             <Navbar />
-            <div className="font-sans flex flex-col items-center min-h-[calc(100vh-80px)] px-8 pb-20 sm:px-20 line-grid">
+            <div className="font-sans flex flex-col items-center min-h-[calc(100vh-80px)] px-2 pb-20 md:px-20 line-grid">
               {children}
             </div>
           </div>
