@@ -61,12 +61,12 @@ export function TodoDialog({ onSubmit, isLoading }: TodoDialogProps) {
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Add New Todo
+          Add New Item
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Todo</DialogTitle>
+          <DialogTitle>Create New Todo Item</DialogTitle>
           <DialogDescription>
             Add a new task to your todo list. Fill in the details below.
           </DialogDescription>
