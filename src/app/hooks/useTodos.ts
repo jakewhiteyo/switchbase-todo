@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Priority } from "@/generated/prisma";
+import toast from "react-hot-toast";
 
 export interface Todo {
   id: string;
@@ -133,6 +134,9 @@ export const useCreateTodo = () => {
       // Invalidate all todos queries to refetch
       queryClient.invalidateQueries({ queryKey: ["todos"] });
     },
+    onError: () => {
+      toast.error("Failed to create todo");
+    },
   });
 
   return {
@@ -174,6 +178,11 @@ export const useUpdateTodo = () => {
       queryClient.invalidateQueries({ queryKey: ["todos"] });
       // Update the specific todo in cache
       queryClient.invalidateQueries({ queryKey: ["todo", updatedTodo.id] });
+
+      toast.success("Todo updated successfully");
+    },
+    onError: () => {
+      toast.error("Failed to update todo");
     },
   });
 
@@ -212,6 +221,11 @@ export const useDeleteTodo = () => {
       queryClient.invalidateQueries({ queryKey: ["todos"] });
       // Remove the specific todo from cache
       queryClient.removeQueries({ queryKey: ["todo", deletedId] });
+
+      toast.success("Todo deleted successfully");
+    },
+    onError: () => {
+      toast.error("Failed to delete todo");
     },
   });
 
@@ -254,6 +268,11 @@ export const useToggleTodo = () => {
       queryClient.invalidateQueries({ queryKey: ["todos"] });
       // Update the specific todo in cache
       queryClient.invalidateQueries({ queryKey: ["todo", updatedTodo.id] });
+
+      toast.success("Todo toggled successfully");
+    },
+    onError: () => {
+      toast.error("Failed to toggle todo");
     },
   });
 
