@@ -11,12 +11,6 @@ export const prisma =
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
         : ["error"],
-    // Add this to disable prepared statements for connection pooling
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
   });
 
 if (process.env.NODE_ENV !== "production") {
@@ -35,5 +29,4 @@ process.on("SIGINT", async () => {
 
 process.on("SIGTERM", async () => {
   await prisma.$disconnect();
-  process.exit(0);
 });
