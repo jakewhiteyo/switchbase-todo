@@ -22,6 +22,7 @@ import {
 import { TodoDialog } from "@/components/custom/todo-dialog";
 import { TodoItem } from "@/components/custom/todo-item";
 import { TodoEdit } from "@/components/custom/todo-edit";
+import { ConfirmationDialog } from "@/components/custom/confirmation-dialog";
 
 export default function TodoPage() {
   const { user } = useAuth();
@@ -39,6 +40,10 @@ export default function TodoPage() {
   // Edit mode state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<UpdateTodoData>({});
+
+  // Confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [todoToDelete, setTodoToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -73,10 +78,16 @@ export default function TodoPage() {
   };
 
   const handleDeleteTodo = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this todo?")) return;
+    setTodoToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!todoToDelete) return;
 
     try {
-      await deleteTodo(id);
+      await deleteTodo(todoToDelete);
+      setTodoToDelete(null);
     } catch (error) {
       console.error("Failed to delete todo:", error);
     }
@@ -99,11 +110,13 @@ export default function TodoPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-2xl">My ToDo List</CardTitle>
+              <CardTitle className="text-2xl">
+                {user.name}&apos;s ToDo List
+              </CardTitle>
               <CardDescription>
                 {todosLoading
                   ? "Loading todos..."
-                  : `${unfinishedTodos?.length || 0} unfinished todo${
+                  : `${unfinishedTodos?.length || 0} unfinished item${
                       unfinishedTodos?.length === 1 ? "" : "s"
                     } in your list`}
               </CardDescription>
@@ -154,6 +167,18 @@ export default function TodoPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        title="Delete Todo"
+        description="Are you sure you want to delete this todo? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
