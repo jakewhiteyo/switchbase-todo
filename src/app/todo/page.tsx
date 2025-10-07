@@ -58,7 +58,7 @@ export default function TodoPage() {
       priority: todo.priority,
       dueDate: todo.dueDate
         ? new Date(todo.dueDate).toISOString().split("T")[0]
-        : "",
+        : null,
     });
   };
 

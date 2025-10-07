@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  QueryKey,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Priority } from "@/generated/prisma";
 import toast from "react-hot-toast";
 
@@ -112,7 +117,8 @@ export const useCreateTodo = () => {
   const { isPending, isError, error, mutateAsync, mutate } = useMutation<
     Todo,
     Error,
-    CreateTodoData
+    CreateTodoData,
+    { previousTodos: [QueryKey, unknown][] }
   >({
     mutationFn: async (data: CreateTodoData) => {
       const response = await fetch("/api/todos", {
@@ -130,11 +136,60 @@ export const useCreateTodo = () => {
 
       return response.json();
     },
-    onSuccess: () => {
-      // Invalidate all todos queries to refetch
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    onMutate: async (newTodo) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["todos"] });
+
+      // Snapshot the previous value
+      const previousTodos = queryClient.getQueriesData({ queryKey: ["todos"] });
+
+      // Create optimistic todo
+      const optimisticTodo: Todo = {
+        id: `temp-${Date.now()}`, // Temporary ID
+        title: newTodo.title,
+        description: newTodo.description || null,
+        completed: newTodo.completed || false,
+        priority: newTodo.priority || "MEDIUM",
+        dueDate: newTodo.dueDate
+          ? new Date(newTodo.dueDate).toISOString()
+          : null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        userId: "", // Will be set by server
+      };
+
+      // Optimistically update all todos queries
+      queryClient.setQueriesData(
+        { queryKey: ["todos"] },
+        (old: Todo[] | undefined) => {
+          if (!old) return [optimisticTodo];
+          return [optimisticTodo, ...old];
+        }
+      );
+
+      return { previousTodos };
     },
-    onError: () => {
+    onSuccess: (newTodo) => {
+      // Replace optimistic todo with real one
+      queryClient.setQueriesData(
+        { queryKey: ["todos"] },
+        (old: Todo[] | undefined) => {
+          if (!old) return [newTodo];
+          return old.map((todo) =>
+            todo.id.startsWith("temp-") ? newTodo : todo
+          );
+        }
+      );
+
+      toast.success("Todo created successfully");
+    },
+    onError: (error, newTodo, context) => {
+      // Revert optimistic update
+      if (context?.previousTodos) {
+        context.previousTodos.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       toast.error("Failed to create todo");
     },
   });
@@ -155,7 +210,8 @@ export const useUpdateTodo = () => {
   const { isPending, isError, error, mutateAsync, mutate } = useMutation<
     Todo,
     Error,
-    { id: string; data: UpdateTodoData }
+    { id: string; data: UpdateTodoData },
+    { previousTodos: [QueryKey, unknown][]; previousTodo: Todo | undefined }
   >({
     mutationFn: async ({ id, data }) => {
       const response = await fetch(`/api/todos/${id}`, {
@@ -173,15 +229,64 @@ export const useUpdateTodo = () => {
 
       return response.json();
     },
+    onMutate: async ({ id, data }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["todos"] });
+      await queryClient.cancelQueries({ queryKey: ["todo", id] });
+
+      // Snapshot the previous values
+      const previousTodos = queryClient.getQueriesData({ queryKey: ["todos"] });
+      const previousTodo = queryClient.getQueryData(["todo", id]) as
+        | Todo
+        | undefined;
+
+      // Optimistically update todos queries
+      queryClient.setQueriesData(
+        { queryKey: ["todos"] },
+        (old: Todo[] | undefined) => {
+          if (!old) return old;
+          return old.map((todo) =>
+            todo.id === id
+              ? { ...todo, ...data, updatedAt: new Date().toISOString() }
+              : todo
+          );
+        }
+      );
+
+      // Optimistically update single todo query
+      queryClient.setQueryData(["todo", id], (old: Todo | undefined) => {
+        if (!old) return old;
+        return { ...old, ...data, updatedAt: new Date().toISOString() };
+      });
+
+      return { previousTodos, previousTodo };
+    },
     onSuccess: (updatedTodo) => {
-      // Invalidate todos queries to refetch
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-      // Update the specific todo in cache
-      queryClient.invalidateQueries({ queryKey: ["todo", updatedTodo.id] });
+      // Update with real data from server
+      queryClient.setQueriesData(
+        { queryKey: ["todos"] },
+        (old: Todo[] | undefined) => {
+          if (!old) return old;
+          return old.map((todo) =>
+            todo.id === updatedTodo.id ? updatedTodo : todo
+          );
+        }
+      );
+
+      queryClient.setQueryData(["todo", updatedTodo.id], updatedTodo);
 
       toast.success("Todo updated successfully");
     },
-    onError: () => {
+    onError: (error, { id }, context) => {
+      // Revert optimistic updates
+      if (context?.previousTodos) {
+        context.previousTodos.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      if (context?.previousTodo) {
+        queryClient.setQueryData(["todo", id], context.previousTodo);
+      }
       toast.error("Failed to update todo");
     },
   });
@@ -202,7 +307,8 @@ export const useDeleteTodo = () => {
   const { isPending, isError, error, mutateAsync, mutate } = useMutation<
     { message: string },
     Error,
-    string
+    string,
+    { previousTodos: [QueryKey, unknown][]; previousTodo: Todo | undefined }
   >({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/todos/${id}`, {
@@ -216,15 +322,45 @@ export const useDeleteTodo = () => {
 
       return response.json();
     },
-    onSuccess: (_, deletedId) => {
-      // Invalidate todos queries to refetch
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-      // Remove the specific todo from cache
-      queryClient.removeQueries({ queryKey: ["todo", deletedId] });
+    onMutate: async (id) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["todos"] });
+      await queryClient.cancelQueries({ queryKey: ["todo", id] });
 
+      // Snapshot the previous values
+      const previousTodos = queryClient.getQueriesData({ queryKey: ["todos"] });
+      const previousTodo = queryClient.getQueryData(["todo", id]) as
+        | Todo
+        | undefined;
+
+      // Optimistically remove from todos queries
+      queryClient.setQueriesData(
+        { queryKey: ["todos"] },
+        (old: Todo[] | undefined) => {
+          if (!old) return old;
+          return old.filter((todo) => todo.id !== id);
+        }
+      );
+
+      // Remove from single todo query
+      queryClient.removeQueries({ queryKey: ["todo", id] });
+
+      return { previousTodos, previousTodo };
+    },
+    onSuccess: () => {
+      // No need to do anything - optimistic update already removed the todo
       toast.success("Todo deleted successfully");
     },
-    onError: () => {
+    onError: (error, id, context) => {
+      // Revert optimistic updates
+      if (context?.previousTodos) {
+        context.previousTodos.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      if (context?.previousTodo) {
+        queryClient.setQueryData(["todo", id], context.previousTodo);
+      }
       toast.error("Failed to delete todo");
     },
   });
@@ -245,7 +381,8 @@ export const useToggleTodo = () => {
   const { isPending, isError, error, mutateAsync, mutate } = useMutation<
     Todo,
     Error,
-    { id: string; completed: boolean }
+    { id: string; completed: boolean },
+    { previousTodos: [QueryKey, unknown][]; previousTodo: Todo | undefined }
   >({
     mutationFn: async ({ id, completed }) => {
       const response = await fetch(`/api/todos/${id}`, {
@@ -263,15 +400,64 @@ export const useToggleTodo = () => {
 
       return response.json();
     },
+    onMutate: async ({ id, completed }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["todos"] });
+      await queryClient.cancelQueries({ queryKey: ["todo", id] });
+
+      // Snapshot the previous values
+      const previousTodos = queryClient.getQueriesData({ queryKey: ["todos"] });
+      const previousTodo = queryClient.getQueryData(["todo", id]) as
+        | Todo
+        | undefined;
+
+      // Optimistically update todos queries
+      queryClient.setQueriesData(
+        { queryKey: ["todos"] },
+        (old: Todo[] | undefined) => {
+          if (!old) return old;
+          return old.map((todo) =>
+            todo.id === id
+              ? { ...todo, completed, updatedAt: new Date().toISOString() }
+              : todo
+          );
+        }
+      );
+
+      // Optimistically update single todo query
+      queryClient.setQueryData(["todo", id], (old: Todo | undefined) => {
+        if (!old) return old;
+        return { ...old, completed, updatedAt: new Date().toISOString() };
+      });
+
+      return { previousTodos, previousTodo };
+    },
     onSuccess: (updatedTodo) => {
-      // Invalidate todos queries to refetch
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-      // Update the specific todo in cache
-      queryClient.invalidateQueries({ queryKey: ["todo", updatedTodo.id] });
+      // Update with real data from server
+      queryClient.setQueriesData(
+        { queryKey: ["todos"] },
+        (old: Todo[] | undefined) => {
+          if (!old) return old;
+          return old.map((todo) =>
+            todo.id === updatedTodo.id ? updatedTodo : todo
+          );
+        }
+      );
+
+      queryClient.setQueryData(["todo", updatedTodo.id], updatedTodo);
 
       toast.success("Todo toggled successfully");
     },
-    onError: () => {
+    onError: (error, { id }, context) => {
+      // Revert optimistic updates
+      if (context?.previousTodos) {
+        context.previousTodos.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      if (context?.previousTodo) {
+        queryClient.setQueryData(["todo", id], context.previousTodo);
+      }
       toast.error("Failed to toggle todo");
     },
   });
