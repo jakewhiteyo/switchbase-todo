@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ToDo List",
   description: "ToDo List",
+  icons: {
+    icon: [{ url: "/icon.png", sizes: "16x16" }],
+  },
 };
 
 export default function RootLayout({

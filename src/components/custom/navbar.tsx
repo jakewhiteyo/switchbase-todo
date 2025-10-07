@@ -2,6 +2,7 @@
 import { useAuth } from "@/app/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import Image from "next/image";
 
 export function Navbar() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
@@ -10,7 +11,7 @@ export function Navbar() {
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center">
           <Link href="/">
-            <h1 className="text-2xl font-bold text-gray-900">todo list</h1>
+            <Image src="/title.png" alt="logo" width={150} height={100} />
           </Link>
         </div>
         {isLoading ? (

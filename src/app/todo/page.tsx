@@ -162,7 +162,7 @@ export default function TodoPage() {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No todos yet. Create your first todo above!
+              No todo items yet. Create your first todo item above!
             </div>
           )}
         </CardContent>

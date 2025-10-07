@@ -21,8 +21,28 @@ export default async function Home() {
           <br />
           <span className="text-sw-orange">Simple.</span>
         </p>
-        <p className="text-lg mb-8 text-muted-foreground">
+        <p className="text-lg mb-4 text-muted-foreground">
           This todo list app is an all-in-one platform for managing your life.
+        </p>
+        <p className="text-lg mb-8 text-sw-orange">
+          Built by{" "}
+          <a
+            href="https://jakewhiteyo.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-sw-orange/80 transition-colors"
+          >
+            Jake White
+          </a>{" "}
+          for{" "}
+          <a
+            href="https://switchbase.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-sw-orange/80 transition-colors"
+          >
+            SwitchBase
+          </a>
         </p>
         <div className="flex gap-4 flex-wrap justify-center">
           <Button size="lg" className="font-bold" asChild>
